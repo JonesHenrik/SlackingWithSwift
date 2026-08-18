@@ -39,8 +39,8 @@ facts is what Phase 1 and Phase 2 are for.
    than Phase 2 planned*: because the design got decided directly, no `RootView` and no style
    gallery were ever built. There is still no menu — the game starts on first touch, and game-over
    offers "AGAIN". Extracting a menu is now Phase 3 work.
-2. **Nothing is committed.** Only the bare Xcode template is in git (`c29bfc4`). All of `Game/`
-   and `Styles/` is untracked, alongside `.DS_Store` and `xcuserdata/`.
+2. ~~**Nothing is committed.**~~ **Resolved 2026-08-18 (Phase 1).** The whole game is committed at
+   `e90356a`; `.DS_Store` and `xcuserdata/` are ignored rather than tracked.
 3. **Deployment target is iOS 26.5**, not the iOS 17 the plan specifies. That restricts install
    to devices on the very latest OS — a real risk for a party game passed around a room of
    mentors' phones. `SWIFT_VERSION` is also still `5.0`.
@@ -196,7 +196,26 @@ rather than hand-editing assets, and re-paste the iris constants if the crop cha
 
 ---
 
-## Phase 0 — The phone in your hand
+## Phase 0 — The phone in your hand  ✅ *built 2026-08-18*
+
+Shipped as `Game/PhoneScreenSim.swift` + `Views/PhoneHandView.swift`, with the layer and three
+`@State` properties added to `PaulGameView`. `PixelSpriteView`'s cell math came out into a shared
+`PixelCanvasLayout` in `PaulSprite.swift` rather than being duplicated, and is no longer tied to
+16x18. `GameEngine`, `DifficultyCurve` and the asset catalog are untouched, as planned.
+
+Three things the plan did not call for, all found by looking at it on a device:
+
+- **A seeded head start** of 1.5–9s on the mini-app clock, so the phone arrives on a score already
+  in the hundreds and a feed already scrolled, rather than on `0000` and an unscrolled feed.
+- **The app strictly alternates** rather than being drawn at random. With only two apps a random
+  draw repeats half the time, and the plan's own test asks for alternation across holds.
+- **The thumb hugs the right bezel.** Leaning it toward the middle looked more natural but sat on
+  the runner's centre lane, which is where its only moving character lives.
+
+Two things needed a second pass before they read at all: the runner's road was drawn with the same
+squared depth curve as the travel and came out as a thin funnel rather than a trapezoid, and the
+whole runner palette sat at one value, so the road did not separate from the sky or the ground.
+The star field was also punching holes through the score digits; the score now sits on a plate.
 
 The game's fiction is "slack off while Paul isn't looking," but the thing you are supposedly
 *doing* while you hold has never been on screen. This phase puts it there: while the player
@@ -259,27 +278,52 @@ it beside `PaulFront.png` and check outline weight and pixel size actually match
 
 ---
 
-## Phase 1 — Foundation and decisions
+## Phase 1 — Foundation and decisions  ✅ *built 2026-08-18*
+
+Done as `PaulGame/e90356a`. `.gitignore` added, `xcuserdata/` untracked, and the whole game —
+`Game/`, `Styles/`, `Views/`, `Audio/`, the cut `PaulFront`/`PaulBack` imagesets and the app icon —
+committed as a baseline in one no-behaviour-change commit. The project builds clean.
+
+Two items came out differently than written, both because the plan's Phase 1 text predates the
+2026-08-12 design decision:
+
+- **The deployment target stays at iOS 26.5.** The assumption below — that 26.5 was an Xcode
+  default to be lowered to iOS 17 — is void. The shipped design calls `.glassEffect` (iOS 26) in
+  six places across `PaulGameView` and `LiquidGlassGameView` and `MeshGradient` (iOS 18) in three,
+  none behind `@available`. Lowering the target is a *design* change, not a settings flip: it would
+  need a fallback for the glass and, worse, a substitute for the mesh, which is the threat signal
+  itself. Confirmed 2026-08-18 to keep 26.5 and accept the latest-OS-only install. If reach ever
+  matters more than the glass, iOS 18 is the cheap stop — only the six `glassEffect` calls need
+  guarding — and that belongs in Phase 3 or 4, not here.
+- **`ContentView.swift` was not deleted.** It is no longer the template: it owns the `GameEngine`
+  and resets the run on backgrounding, and it is what makes the game playable on launch. `RootView`
+  was never built because the design got chosen directly. Deleting it now would break the app;
+  Phase 3's menu work is where this file's fate gets decided.
+
+Also worth knowing: the Xcode project uses `fileSystemSynchronizedGroups` (`objectVersion = 77`),
+so files added under `PaulGame/` join the target automatically. No `project.pbxproj` edit is needed
+when adding a source file, and none was made.
 
 **Build:** No gameplay change. Get the repo into a state where work is trackable.
 
-- Add a `.gitignore` (`.DS_Store`, `xcuserdata/`, `build/`, `DerivedData/`).
-- Commit the existing untracked `Game/` and `Styles/` work as a baseline.
-- Resolve the two settings decisions in *Assumptions* below.
-- Delete the template `ContentView.swift` (Phase 2 replaces it with `RootView`).
+- ~~Add a `.gitignore` (`.DS_Store`, `xcuserdata/`, `build/`, `DerivedData/`).~~ ✅
+- ~~Commit the existing untracked `Game/` and `Styles/` work as a baseline.~~ ✅
+- ~~Resolve the two settings decisions in *Assumptions* below.~~ ✅ — both settings stay as they are.
+- ~~Delete the template `ContentView.swift`.~~ **Dropped**, see above.
 
 **Out of scope:** Any game logic, any UI, any new files beyond `.gitignore`.
 
-**Test:** `git status` is clean apart from intended files. The project builds and launches (to a
-blank screen — expected at this point).
+**Test:** `git status` is clean apart from intended files ✅. The project builds ✅ — and it
+launches to the *game*, not the blank screen this phase originally expected, because Phase 2's
+wiring landed early on 2026-08-12.
 
 **Assumptions:**
-- **I'm assuming the iOS 26.5 deployment target was Xcode's default, not a deliberate choice, and
-  I should lower it to iOS 17** per `plan.md`. If the mentors are all on the latest OS, say so and
-  I'll leave it. This is the one item here I'd like a yes/no on.
+- ~~**I'm assuming the iOS 26.5 deployment target was Xcode's default** and I should lower it to
+  iOS 17.~~ **Answered 2026-08-18: keep 26.5.** The assumption was wrong on the facts — see above.
 - I'm assuming `SWIFT_VERSION 5.0` should stay for now. The code is already `@MainActor`/`@Observable`
   clean, so Swift 6 language mode is likely a small step, but it's not worth a migration mid-build.
-- I'm assuming you want this on `main` as normal commits, not a branch + PR.
+  **Confirmed 2026-08-18: unchanged.**
+- I'm assuming you want this on `main` as normal commits, not a branch + PR. **Confirmed.**
 
 ---
 
